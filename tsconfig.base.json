@@ -14,7 +14,17 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@ts-cqrs/adapters-dynamodb": ["packages/adapters-dynamodb/src/index.ts"],
+      "@ts-cqrs/adapters-elastic-search": [
+        "packages/adapters-elastic-search/src/index.ts"
+      ],
+      "@ts-cqrs/example-app": ["packages/example-app/src/index.ts"],
+      "@ts-cqrs/pipelines-domain": ["packages/pipelines-domain/src/index.ts"],
+      "@ts-cqrs/pipelines-projection": [
+        "packages/pipelines-projection/src/index.ts"
+      ]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

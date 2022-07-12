@@ -1,5 +1,11 @@
 {
   "$schema": "./node_modules/nx/schemas/workspace-schema.json",
   "version": 2,
-  "projects": {}
+  "projects": {
+    "adapters-dynamodb": "packages/adapters-dynamodb",
+    "adapters-elastic-search": "packages/adapters-elastic-search",
+    "example-app": "packages/example-app",
+    "pipelines-domain": "packages/pipelines-domain",
+    "pipelines-projection": "packages/pipelines-projection"
+  }
 }
