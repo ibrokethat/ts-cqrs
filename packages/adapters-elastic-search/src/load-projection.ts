@@ -1,51 +1,33 @@
 import * as TE from 'fp-ts/lib/TaskEither'
-import pluralize from 'pluralize'
+import * as pluralize from 'pluralize'
 import { InitAdapterArgs } from './types'
 import { LoadProjection } from '@ts-cqrs/pipelines-projection'
+import { signedGet } from './signed-request'
 
-const parseResult = ({ _id, _version=0, _source }) => ({
-  id: _id,
-  version: _version,
-  state: _source,
-})
-
-const parseJson = text => {
-	try {
-		return JSON.parse(text)
-	} catch (e) {
-		return text
-	}
-}
-
-const buildPath = (...args) => '/' + args.join('/')
+const buildPath = (...args: string[]) => '/' + args.join('/')
 
 export type InitLoadProjection = (args: InitAdapterArgs) => LoadProjection
-export const initLoadProjection: InitLoadProjection = ({ entityName, endpoint, signedRequest }) => ({ id }) => TE.tryCatch(
-  async () => {
+export const initLoadProjection: InitLoadProjection = ({ entityName, endpoint }) => ({ id }) => {
+  const index = pluralize(entityName)
+  const type = entityName
 
-    const index = pluralize(entityName)
-    const type = entityName
+  return TE.tryCatch(
+    async () => {
+      const res = await signedGet({
+        url: `https://${endpoint}/${index}/${type}/${encodeURIComponent(id)}`
+      })
 
-    const defaults = {
-      endpoint,
-      method: 'GET',
-    }
-
-    const { body } = await signedRequest({
-      ...defaults,
-      path: buildPath(
-        index,
-        type,
-        encodeURIComponent(id)
-      ),
+      const data = JSON.parse(res)
+      return  {
+        id: data._id,
+        version: data._version,
+        state: data._source,
+      }
+    },
+    (err) => ({
+      err,
+      msg: 'loadProjection: Elastic search failure',
+      type: 'RemoteServerError',
     })
-
-    const data = parseJson(body)
-    return parseResult(data)
-  },
-  (err) => ({
-    err,
-    msg: 'loadProjection: Elactic search failure',
-    type: 'RemoteServerError',
-  })
-)
+  )
+}

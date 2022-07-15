@@ -1,26 +1,48 @@
-import { AWS } from '@aws-sdk/client-dynamodb'
-const aws4 = require('aws4');
-const got = require('got');
+import axios from 'axios'
+import { aws4Interceptor } from 'aws4-axios'
+import { defaultProvider } from '@aws-sdk/credential-provider-node'
 
-const chain = new AWS.CredentialProviderChain()
+axios.interceptors.request.use(
+  async () => aws4Interceptor(
+    {
+    // region: 'us-east-1',
+    service: 'es'
+    },
+    await defaultProvider()()
+  )
+)
 
-const awsClient = got.extend({
-	hooks: {
-		beforeRequest: [
-			async options => {
-				const credentials = await chain.resolvePromise()
-				aws4.sign(options, credentials)
-			}
-		]
-	}
-})
+type SignedGetArgs = { url: string }
+type SignedGet = (args: SignedGetArgs) => Promise<string>
+export const signedGet: SignedGet = async ({ url })  => {
+  const res = await axios.get<unknown, string>(url, {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  return res
+}
 
-module.exports = async ({ endpoint, path, body, method }) => {
-	return awsClient('https://' + endpoint + path, {
-		body,
-		method,
-		headers: {
-			'Content-Type': 'application/json',
-		}
-	})
+type SignedPutArgs = { url: string, data: string }
+type SignedPut = (args: SignedPutArgs) => Promise<string>
+export const signedPut: SignedPut = async ({ url, data })  => {
+  const res = await axios.put<unknown, string>(url, {
+    data,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  return res
+}
+
+type SignedDeleteArgs = { url: string, data: string }
+type SignedDelete = (args: SignedDeleteArgs) => Promise<string>
+export const signedDelete: SignedDelete = async ({ url, data })  => {
+  const res = await axios.delete<unknown, string>(url, {
+    data,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  return res
 }

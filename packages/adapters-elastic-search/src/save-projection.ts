@@ -1,52 +1,27 @@
 import * as TE from 'fp-ts/lib/TaskEither'
-import pluralize from 'pluralize'
+import * as pluralize from 'pluralize'
 import { InitAdapterArgs } from './types'
 import { SaveProjection } from '@ts-cqrs/pipelines-projection'
-
-const parseResult = ({ _id, _version=0, _source }) => ({
-  id: _id,
-  version: _version,
-  state: _source,
-})
-
-const parseJson = text => {
-	try {
-		return JSON.parse(text)
-	} catch (e) {
-		return text
-	}
-}
-
-const buildPath = (...args) => '/' + args.join('/')
+import { signedPut, signedDelete } from './signed-request'
 
 export type InitSaveProjection = (args: InitAdapterArgs) => SaveProjection
-export const initSaveProjection: InitSaveProjection = ({ entityName, endpoint, signedRequest }) => ({ id, state, version }) => TE.tryCatch(
-  async () => {
+export const initSaveProjection: InitSaveProjection = ({ entityName, endpoint }) => ({ id, state, version }) => {
+  const index = pluralize(entityName)
+  const type = entityName
 
-    const index = pluralize(entityName)
-    const type = entityName
+  return TE.tryCatch(
+    async () => {
+      const res = await (state ? signedPut : signedDelete)({
+        data: JSON.stringify(state),
+        url: `https://${endpoint}/${index}/${type}/${encodeURIComponent(id)}?version_type=external&version=${version}`
+      })
 
-    const defaults = {
-      endpoint,
-      method: 'GET',
-    }
-
-    const { body } = await signedRequest({
-      ...defaults,
-      method: state ? 'PUT' : 'DELETE',
-      path: buildPath(
-        index,
-        type,
-        encodeURIComponent(id) + '?version_type=external&version=' + version
-      ),
-      body: JSON.stringify(state),
+      return JSON.parse(res)
+    },
+    (err) => ({
+      err,
+      msg: 'saveProjection: Elastic search failure',
+      type: 'RemoteServerError',
     })
-
-    return parseJson(body)
-  },
-  (err) => ({
-    err,
-    msg: 'saveProjection: Elactic search failure',
-    type: 'RemoteServerError',
-  })
-)
+  )
+}
